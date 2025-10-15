@@ -1,18 +1,18 @@
 {% set name = "pymc-experimental" %}
-{% set version = "0.0.9" %}
+{% set version = "0.1.4" %}
 
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: ebbb2494a0a79cc8058aef6302ea3d3c2c04e81801afa58e1ae26e561142c40a
+  url: https://pypi.org/packages/source/p/pymc-experimental/pymc_experimental-0.1.4.tar.gz
+  sha256: ed1b0ea9fbe1b5f6d24d0adf646743dec6aab74de0b1adced1be23dae2fcdd9d
 
 build:
   number: 0
   # skip because arviz is not supported for py38
-  skip: True  # [py<39]
+  skip: true  # [py<39]
   script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
 
 requirements:
