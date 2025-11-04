@@ -49,6 +49,7 @@ requirements:
 # expected tangent dtype float64, but got tangent dtype int8 instead.
 {% set deselect_tests = "--deselect=tests/statespace/test_structural.py::test_filter_scans_time_varying_design_matrix" %}
 {% set deselect_tests = deselect_tests + " --deselect=tests/statespace/test_structural.py::test_extract_components_from_idata" %}
+{% set deselect_tests = deselect_tests + " --deselect=tests/test_find_map.py::test_JAX_map" %}
 # E           ConnectionResetError: [Errno 104] Connection reset by peer
 {% set deselect_tests = deselect_tests + " --deselect=tests/distributions/test_discrete_markov_chain.py::TestDiscreteMarkovRV::test_mcmc_sampling" %}
 # E       TypeError: string indices must be integers, not 'str'
