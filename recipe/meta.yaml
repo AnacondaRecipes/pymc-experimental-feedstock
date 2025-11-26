@@ -1,18 +1,20 @@
 {% set name = "pymc-experimental" %}
-{% set version = "0.0.9" %}
+{% set version = "0.1.4" %}
 
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: ebbb2494a0a79cc8058aef6302ea3d3c2c04e81801afa58e1ae26e561142c40a
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name|replace('-', '_') }}-{{ version }}.tar.gz
+  sha256: ed1b0ea9fbe1b5f6d24d0adf646743dec6aab74de0b1adced1be23dae2fcdd9d
+  patches:
+    # E   TypeError: MvNormalRV.__init__() missing 1 required keyword-only argument: 'method'
+    - patches/pymc-compatibility-fix.patch
 
 build:
   number: 0
-  # skip because arviz is not supported for py38
-  skip: True  # [py<39]
+  skip: true  # [py<310]
   script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
 
 requirements:
@@ -22,31 +24,93 @@ requirements:
     - setuptools
     - wheel
   run:
-    - pymc >=5.6.0
     - python
+    - pymc >=5.19.1
     - scikit-learn
 
+# The test data is on the GitHub source, but it is no longer pymc-experimental(renamed to pymc-extras) skipping it to avoid confusion.
+# E   FileNotFoundError: [Errno 2] No such file or directory: 'tests/statespace/test_data/nile.csv'
+{% set ignore_tests = "--ignore=tests/statespace/test_statespace.py" %}
+{% set ignore_tests = ignore_tests + " --ignore=tests/statespace/test_statespace_JAX.py" %}
+{% set ignore_tests = ignore_tests + " --ignore=tests/statespace/test_distributions.py" %}
+{% set ignore_tests = ignore_tests + " --ignore=tests/statespace/test_coord_assignment.py" %}
+{% set ignore_tests = ignore_tests + " --ignore=tests/statespace/test_kalman_filter.py" %}
+# E  FileNotFoundError: [Errno 2] No such file or directory: 'tests/statespace/test_data/statsmodels_macrodata_processed.csv'
+{% set ignore_tests = ignore_tests + " --ignore=tests/statespace/test_SARIMAX.py" %}
+{% set ignore_tests = ignore_tests + " --ignore=tests/statespace/test_VARMAX.py" %}
+# E RuntimeError: quantile_histogram requires xhistogram package
+{% set ignore_tests = ignore_tests + " --ignore=tests/test_histogram_approximation.py" %}
+# E RuntimeError: Need BlackJAX to use `pathfinder`
+{% set ignore_tests = ignore_tests + " --ignore=tests/test_pathfinder.py" %}
+# >       y, u = jax.jvp(lambda x: f_loss_and_grad(x)[1], (x,), (p,))
+              #  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# E       TypeError: primal and tangent arguments to jax.jvp do not match; dtypes must be equal,
+# or in case of int/bool primal dtype the tangent dtype must be float0.Got primal dtype float64 and so
+# expected tangent dtype float64, but got tangent dtype int8 instead.
+{% set deselect_tests = "--deselect=tests/statespace/test_structural.py::test_filter_scans_time_varying_design_matrix" %}
+{% set deselect_tests = deselect_tests + " --deselect=tests/statespace/test_structural.py::test_extract_components_from_idata" %}
+{% set deselect_tests = deselect_tests + " --deselect=tests/test_find_map.py::test_JAX_map" %}
+# E           ConnectionResetError: [Errno 104] Connection reset by peer
+{% set deselect_tests = deselect_tests + " --deselect=tests/distributions/test_discrete_markov_chain.py::TestDiscreteMarkovRV::test_mcmc_sampling" %}
+# E       TypeError: string indices must be integers, not 'str'
+{% set deselect_tests = deselect_tests + " --deselect=tests/model/marginal/test_marginal_model.py::TestFullModels::test_change_point_model_sampling" %}
+
 test:
+  source_files:
+    - tests
   imports:
     - pymc_experimental
     - pymc_experimental.distributions
+    - pymc_experimental.distributions.continuous
+    - pymc_experimental.distributions.discrete
+    - pymc_experimental.distributions.histogram_utils
     - pymc_experimental.distributions.multivariate
-    - pymc_experimental.gp
-    - pymc_experimental.inference
-    - pymc_experimental.model_transform
-    - pymc_experimental.preprocessing
-    - pymc_experimental.tests
-    - pymc_experimental.tests.distributions
-    - pymc_experimental.tests.model_transform
-    - pymc_experimental.tests.utils
+    - pymc_experimental.distributions.multivariate.r2d2m2cp
+    - pymc_experimental.distributions.timeseries
+    - pymc_experimental.gp.latent_approx
+    - pymc_experimental.inference.find_map
+    - pymc_experimental.inference.fit
+    - pymc_experimental.inference.laplace
+    - pymc_experimental.linearmodel
+    - pymc_experimental.model_builder
+    - pymc_experimental.model.marginal.distributions
+    - pymc_experimental.model.marginal.graph_analysis
+    - pymc_experimental.model.marginal.marginal_model
+    - pymc_experimental.model.model_api
+    - pymc_experimental.printing
+    - pymc_experimental.statespace
+    - pymc_experimental.statespace.core
+    - pymc_experimental.statespace.core.compile
+    - pymc_experimental.statespace.core.representation
+    - pymc_experimental.statespace.core.statespace
+    - pymc_experimental.statespace.filters
+    - pymc_experimental.statespace.filters.distributions
+    - pymc_experimental.statespace.filters.kalman_filter
+    - pymc_experimental.statespace.filters.kalman_smoother
+    - pymc_experimental.statespace.filters.utilities
+    - pymc_experimental.statespace.models
+    - pymc_experimental.statespace.models.ETS
+    - pymc_experimental.statespace.models.SARIMAX
+    - pymc_experimental.statespace.models.utilities
+    - pymc_experimental.statespace.models.VARMAX
+    - pymc_experimental.statespace.utils.constants
+    - pymc_experimental.statespace.utils.data_tools
     - pymc_experimental.utils
+    - pymc_experimental.utils.linear_cg
+    - pymc_experimental.version
   requires:
     - pip
+    - pytest
+    - jax
+    - better-optimize
+    - statsmodels
   commands:
     - pip check
+    - python -c "from importlib.metadata import version; assert(version('{{ name }}')=='{{ version }}')"
+    - pytest -v tests {{ ignore_tests }} {{ deselect_tests }}
 
 about:
-  home: https://www.pymc.io/projects/experimental
+  home: https://pypi.org/project/pymc-experimental
   license: Apache-2.0
   license_family: APACHE
   license_file: LICENSE
@@ -55,8 +119,8 @@ about:
     A home for new additions to PyMC, which may include unusual probability distribitions, advanced model fitting
     algorithms, or any code that may be inappropriate to include in the pymc repository, but may want to be made
     available to users.
-  doc_url: https://github.com/pymc-devs/pymc-experimental
-  dev_url: https://github.com/pymc-devs/pymc-experimental
+  doc_url: https://pymc-experimental.readthedocs.io
+  dev_url: https://pypi.org/project/pymc-experimental
 
 extra:
   recipe-maintainers:

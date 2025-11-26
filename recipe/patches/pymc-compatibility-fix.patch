@@ -1,0 +1,33 @@
+From 3d94f99085f79e54f56804e632f420004b748742 Mon Sep 17 00:00:00 2001
+From: Patryk Kups <pkups@anaconda.com>
+Date: Mon, 3 Nov 2025 14:03:35 +0100
+Subject: [PATCH] patch
+
+---
+ pymc_experimental/statespace/filters/distributions.py | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/pymc_experimental/statespace/filters/distributions.py b/pymc_experimental/statespace/filters/distributions.py
+index d3b70c8..087732c 100644
+--- a/pymc_experimental/statespace/filters/distributions.py
++++ b/pymc_experimental/statespace/filters/distributions.py
+@@ -61,9 +61,13 @@ class MvNormalSVD(MvNormal):
+ 
+     A JAX MvNormal robust to low-rank covariance matrices
+     """
+-
+-    rv_op = MvNormalSVDRV()
+-
++    # Compatibility fix for PyMC >=5.19 where MvNormalRV requires 'method' kwarg
++    try:
++        rv_op = MvNormalSVDRV(method="svd")
++    except TypeError:
++        # Fallback for older PyMC versions that do not accept 'method'
++        rv_op = MvNormalSVDRV()
++    # End compatibility fix
+ 
+ try:
+     import jax.random
+-- 
+2.39.5 (Apple Git-154)
+
